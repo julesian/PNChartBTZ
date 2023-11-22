@@ -108,36 +108,45 @@
 /** Override this to change how inner attributes are computed. **/
 - (void)recompute {
     
-    //同理
-    CGFloat minimal = (CGRectGetWidth(self.bounds) < CGRectGetHeight(self.bounds)) ? CGRectGetWidth(self.bounds) : CGRectGetHeight(self.bounds);
-    self.outerCircleRadius = minimal / 2;
-    self.innerCircleRadius = minimal / 6;
+    if (!fixedRadius) {
+        //同理
+        CGFloat minimal = (CGRectGetWidth(self.bounds) < CGRectGetHeight(self.bounds)) ? CGRectGetWidth(self.bounds) : CGRectGetHeight(self.bounds);
+        self.outerCircleRadius = minimal / 2;
+        self.innerCircleRadius = minimal / 6;
+    }
+   
 }
 
 #pragma mark -
 
-- (void)strokeChart{
+- (void)strokeChart {
     [self loadDefault];
     [self recompute];
-    
-    PNPieChartDataItem *currentItem;
+
+    CGFloat previousEndAngle = -M_PI_2; // Start angle for the first segment
+
     for (int i = 0; i < _items.count; i++) {
-        currentItem = [self dataItemForIndex:i];
-        
-        
+        PNPieChartDataItem *currentItem = [self dataItemForIndex:i];
+
+        // Adjust start and end angles for gaps
         CGFloat startPercentage = [self startPercentageForItemAtIndex:i];
-        CGFloat endPercentage   = [self endPercentageForItemAtIndex:i];
+        CGFloat endPercentage = [self endPercentageForItemAtIndex:i];
         
+        CGFloat startAngle = previousEndAngle + (previousEndAngle == -M_PI_2 ? 0 : self.itemGapSize);
+        CGFloat endAngle = startAngle + (endPercentage - startPercentage) * (M_PI * 2) - self.itemGapSize;
+
         CGFloat radius = _innerCircleRadius + (_outerCircleRadius - _innerCircleRadius) / 2;
         CGFloat borderWidth = _outerCircleRadius - _innerCircleRadius;
         
-        CAShapeLayer *currentPieLayer =	[self newCircleLayerWithRadius:radius
+        CAShapeLayer *currentPieLayer = [self newCircleLayerWithRadius:radius
                                                            borderWidth:borderWidth
                                                              fillColor:[UIColor clearColor]
                                                            borderColor:currentItem.color
-                                                       startPercentage:startPercentage
-                                                         endPercentage:endPercentage];
+                                                            startAngle:startAngle
+                                                              endAngle:endAngle];
         [_pieLayer addSublayer:currentPieLayer];
+        
+        previousEndAngle = endAngle;
     }
     
     [self maskChart];
@@ -231,22 +240,20 @@
                                borderWidth:(CGFloat)borderWidth
                                  fillColor:(UIColor *)fillColor
                                borderColor:(UIColor *)borderColor
-                           startPercentage:(CGFloat)startPercentage
-                             endPercentage:(CGFloat)endPercentage{
+                                startAngle:(CGFloat)startAngle
+                                  endAngle:(CGFloat)endAngle {
     CAShapeLayer *circle = [CAShapeLayer layer];
     
     CGPoint center = CGPointMake(CGRectGetMidX(self.bounds),CGRectGetMidY(self.bounds));
     
     UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:center
                                                         radius:radius
-                                                    startAngle:-M_PI_2
-                                                      endAngle:M_PI_2 * 3
+                                                    startAngle:startAngle
+                                                      endAngle:endAngle
                                                      clockwise:YES];
     
     circle.fillColor   = fillColor.CGColor;
     circle.strokeColor = borderColor.CGColor;
-    circle.strokeStart = startPercentage;
-    circle.strokeEnd   = endPercentage;
     circle.lineWidth   = borderWidth;
     circle.path        = path.CGPath;
     

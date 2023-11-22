@@ -56,6 +56,12 @@
 
 @property (nonatomic, weak) id<PNChartDelegate> delegate;
 
+/** Gap between items **/
+@property (nonatomic) CGFloat itemGapSize;
+
+/** Flag to enable fixed Radius regardless of frame **/
+@property (nonatomic) BOOL fixedRadius;
+
 /** Update chart items. Does not update chart itself. */
 - (void)updateChartData:(NSArray *)data;
 
